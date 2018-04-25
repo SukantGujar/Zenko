@@ -37,7 +37,7 @@ spec:
           args: ['npm', 'run', 'start_dataserver']
           ports:
             - name: s3-data
-              containerPort: {{ .Values.service.internalPort }}
+              containerPort: 9991
           volumeMounts:
             - name: persistent-storage
               mountPath: /data

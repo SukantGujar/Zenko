@@ -2,6 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 replicaCount: 1
+port: 9991
 image:
   repository: zenko/cloudserver
   tag: 0.1.9
@@ -9,8 +10,6 @@ image:
 service:
   name: s3-data
   type: ClusterIP
-  internalPort: 9991
-  externalPort: 9991
 persistentVolume:
   enabled: true
   accessModes:
