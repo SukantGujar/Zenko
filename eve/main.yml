@@ -1,0 +1,9 @@
+---
+version: 0.2
+
+branches:
+  default:
+    stage: pre-merge
+models:
+   - worker: &node-worker
+      type: kube
