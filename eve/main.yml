@@ -1,0 +1,61 @@
+version: "0.2"
+
+branches:
+  default:
+    stage: "pre-merge"
+
+stages:
+  pre-merge:
+    worker: &pod
+      type: kube_pod
+      path: eve/workers/zenko.yaml
+      images:
+        aggressor: eve/workers/aggressor
+    steps:
+    - TriggerStages:
+        name: trigger all the tests
+        stage_names:
+        - cluster_1_9_6
+
+  cluster_1_9_6:
+    worker:
+      <<: *pod
+      service:
+        requests:
+          version: "1.9.6"
+        namespaces:
+        - "testNamespace"    # <<< the default namespace for that stage
+    steps:
+    - Git: &git_pull
+        name: git pull
+        repourl: "%(prop:git_reference)s"
+        mode: full
+        method: clobber
+        retryFetch: true
+        haltOnFailure: true
+    - ShellCommand:
+        name: install helm (tiller into kubernetes)
+        command: >-
+          helm init
+          --tiller-namespace %(prop:testNamespace)s
+          --service-account default
+          --wait
+    - ShellCommand:
+        name: Install needed repo
+        command: >
+          helm repo add zenko-zookeeper https://scality.github.io/zenko-zookeeper/charts
+    - ShellCommand:
+        name: Retrieve dependency
+        command: >-
+           helm dep build charts/zenko
+    - ShellCommand:
+        name: Install Zenko !
+        command: >-
+          helm install --tiller-namespace %(prop:testNamespace)s --wait
+          --set prometheus.rbac.create=false
+          --namespace %(prop:testNamespace)s
+          --name zenko-test charts/zenko
+    - ShellCommand:
+        name: Test zenko
+        command: >-
+          helm test --tiller-namespace %(prop:testNamespace)s zenko-test
