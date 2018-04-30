@@ -1,11 +1,24 @@
 # Default values for backbeat.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+orbit:
+  enabled: true
 
 image:
   repository: zenko/backbeat
-  tag: 0.1.4
+  tag: 0.1.5
   pullPolicy: IfNotPresent
+
+api:
+  replicaCount: 1
+  service:
+    name: backbeat-api
+    type: ClusterIP
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 consumer:
   replicaCount: 1

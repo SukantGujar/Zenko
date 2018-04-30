@@ -1,14 +1,14 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "backbeat.fullname" . }}-producer
+  name: {{ template "backbeat.fullname" . }}-api
   labels:
-    app: {{ template "backbeat.name" . }}
+    app: {{ template "backbeat.name" . }}-api
     chart: {{ template "backbeat.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
-  replicas: {{ .Values.producer.replicaCount }}
+  replicas: {{ .Values.api.replicaCount }}
   template:
     metadata:
       labels:
@@ -19,7 +19,10 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["npm", "run", "queue_populator"]
+          args: ["npm", "start"]
+          ports:
+            - name: backbeat-api
+              containerPort: 8900
           env:
             - name: REMOTE_MANAGEMENT_DISABLE
               value: "{{- if .Values.orbit.enabled }}0{{- else }}1{{- end }}"
@@ -29,25 +32,28 @@ spec:
               value: "{{- printf "%s-zenko-zookeeper:2181" .Release.Name | trunc 63 | trimSuffix "-" -}}"
             - name: KAFKA_HOSTS
               value: "{{- printf "%s-kafka-0.%s-kafka:9092" .Release.Name .Release.Name | trunc 63 | trimSuffix "-" -}}"
-            - name: QUEUE_POPULATOR_DMD_HOST
-              value: "{{- printf "%s-s3-metadata" .Release.Name | trunc 63 | trimSuffix "-" -}}"
-            - name: QUEUE_POPULATOR_DMD_PORT
-              value: "9993"
-            - name: MONGODB_HOSTS
-              value: "{{ .Release.Name }}-mongodb-replicaset-0.{{ .Release.Name }}-mongodb-replicaset:27017,{{ .Release.Name }}-mongodb-replicaset-1.{{ .Release.Name }}-mongodb-replicaset:27017,{{ .Release.Name }}-mongodb-replicaset-2.{{ .Release.Name }}-mongodb-replicaset:27017"
-          # TODO livenessProbe:
+            - name: REDIS_HOST
+              value: "{{- printf "%s-%s" .Release.Name "redis" | trunc 63 | trimSuffix "-" -}}"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: HEALTHCHECKS_ALLOWFROM
+              value: '0.0.0.0/0'
+          livenessProbe:
+            httpGet:
+              path: /_/healthcheck
+              port: backbeat-api
           # TODO readinessProbe:
           resources:
-{{ toYaml .Values.producer.resources | indent 12 }}
-    {{- with .Values.producer.nodeSelector }}
+{{ toYaml .Values.api.resources | indent 12 }}
+    {{- with .Values.api.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
     {{- end }}
-    {{- with .Values.producer.affinity }}
+    {{- with .Values.api.affinity }}
       affinity:
 {{ toYaml . | indent 8 }}
     {{- end }}
-    {{- with .Values.producer.tolerations }}
+    {{- with .Values.api.tolerations }}
       tolerations:
 {{ toYaml . | indent 8 }}
     {{- end }}
